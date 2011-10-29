@@ -36,7 +36,7 @@ class Ant:
 			wp.append(next_wp)
 			loc_temp = ants.destination(loc_temp, next_wp)
 		return wp
-	
+		
 	# A* with JPS
 	def generateWaypointsJPS(self, target, bot, ants):
 		if self.loc == target:
@@ -71,13 +71,14 @@ class Ant:
 			jumpPoints=jump(currNode,n,startNode,goalNode)
 			successors=(jumpPoints)
 		return reconstruct_path(successors)
-		
+	
 	# wikipedia-algorithm implementation for A*
 	def generateWaypointsAStar(self, target, bot, ants):
 		if self.loc == target:
 			return deque()
+		breakingFactor = (1+1.0/ants.distance(self.loc,target))
 		def heuristic_cost_estimate(loc1, loc2):
-			return ants.distance(loc1, loc2)
+			return ants.distance(loc1, loc2)*breakingFactor
 		def getNNodes(loc):
 			l = []
 			l.append(ants.destination(loc, 'n'))
@@ -132,7 +133,6 @@ class Ant:
 				
 				if tentative_is_better:
 					came_from[y] = x
-					# self.debugPrint("y: "+str((x,y)))
 					g_score[y] = tentative_g_score
 					h_score[y] = heuristic_cost_estimate(y, target)
 					f_score[y] = g_score[y] + h_score[y]
@@ -153,18 +153,17 @@ class Ant:
 			for enAnt in ants.enemy_ants():
 				if ants.distance(enAnt[0], ants.destination(self.loc,next_wp))<=3:
 					if not bot.isBlockedLoc(ants.destination(self.loc, bot.oppositeDirection(next_wp)), ants):
-						self.waypoints.appendleft(next_wp)		
+						self.waypoints.appendleft(next_wp)
 						self.waypoints.appendleft(next_wp)#go back next turn
 						next_wp=bot.oppositeDirection(next_wp)#these 3 lines can be replaced by more sophisticated flee direction
 						self.waypoints.appendleft(next_wp)#the right element needs to be popped
 						break
-				
 			ants.issue_order((self.loc, next_wp))
 			self.loc = ants.destination(self.loc, next_wp)
 			self.waypoints.popleft()
 			bot.soonOccupied.add(self.loc)
 		else:
-			self.target = (-1, -1)
+			 self.target = (-1, -1)
 		
 class Food:
 	def __init__(self, pLoc):
@@ -202,7 +201,7 @@ class DorphBot:
 		if isDebug:
 			f = open('debug.txt', 'w')
 			f.close()
-		self.maxCPULoad = [-1, -1] # (round, runtime),
+		self.maxCPULoad = [-1,-1] # (round, runtime),
 
 	def do_setup(self, ants):
 		self.mapAspect = 1.0 * ants.cols / ants.rows
@@ -286,7 +285,10 @@ class DorphBot:
 		self.debugOrderCounter['3'] = 0
 		self.debugOrderCounter['4'] = 0
 		
-		time1 = time.clock()
+		# if self.turnnumber in [1,14,61]:
+			# self.debugPrint("wall: "+str(self.rememberedMap[9][65]))
+		
+		time1=time.clock()
 		
 		# clear the housekeeping sets
 		self.soonOccupied.clear()
@@ -310,7 +312,7 @@ class DorphBot:
 			adjacentPositions.append(ants.destination(foodLoc, 'e'))
 			adjacentPositions.append(ants.destination(foodLoc, 's'))
 			adjacentPositions.append(ants.destination(foodLoc, 'w'))
-			if self.foods[foodLoc].hasComingAnt() and self.foods[foodLoc].comingAnt.loc in adjacentPositions:
+			if self.foods[foodLoc].hasComingAnt() and self.foods[foodLoc].comingAnt.orderName=="1":
 				self.foods[foodLoc].comingAnt.orderName = ''
 				self.foods[foodLoc].comingAnt.target = (-1, -1)
 			del self.foods[foodLoc]
@@ -326,9 +328,7 @@ class DorphBot:
 					if not ants.passable(loc):
 						self.rememberedMap[row][col] = 3
 					if self.knownMap[row][col] == 0:
-						self.knownMap[row][col] = self.turnnumber					
-				else:
-					self.rememberedMap[row][col] = 0 #todo
+						self.knownMap[row][col] = self.turnnumber			
 		
 		#add newborn ants to antlist				
 		for locAntNewborn in [a for a in ants.my_hills() if not a in self.antList]:
@@ -340,30 +340,10 @@ class DorphBot:
 		# remove killed ants ;(
 		aliveAntsLoc = set(ants.my_ants())
 		for ant in [a for a in self.antList if a.loc not in aliveAntsLoc]:
+			self.debugPrint("killedAnt: " + str(ant))
 			self.antList.remove(ant)
 		
-		time2 = time.clock()
-
-
-		#playAround: priority 0: run away from enemy ants
-		
-#		for enAnt in ants.enemy_ants():
-#			antDistances = []
-#			for ant in self.antList:
-#				self.debugPrint(str(enAnt[0]) + " " + str(ant.loc))
-#				dist_temp = ants.distance(enAnt[0], ant.loc)
-#				if dist_temp <= 2:
-#					antDistances.append((dist_temp, ant, enAnt[0]))
-#			antDistances.sort(key=itemgetter(0, 2))
-#			isRunningAway = []
-#			for i in antDistances:
-#				self.debugPrint(str(antDistances[i][1].loc) + " " + str(isRunningAway))
-#				if not antDistances[i][1].loc in isRunningAway:
-#					targetLoc = ants.destination(self.oppositeDirection(ants.direction(antDistances[i][1].loc, antDistances[i][2])))
-#					if not self.isBlockedLoc(targetLoc, ants):
-#						antDistances[i][1].tryOrder(targetLoc, ants, '0', self)
-#						isRunningAway.append(antDistances[i][1].loc)
-		
+		time2=time.clock()
 		
 		# priority 1: Gather every food item by closest ant
 		foodDistances = []	
@@ -376,19 +356,28 @@ class DorphBot:
 		foodDistances.sort(key=itemgetter(0))
 		for dist in foodDistances:
 			# hasn't been used + order hasn't already been given
-			if (not self.foods[dist[2]].usedForFoodRecalc) and (not dist[1].usedForFoodRecalc) and (self.foods[dist[2]].comingAnt != dist[1]):
-				if self.foods[dist[2]].comingAnt != None:
-					self.foods[dist[2]].comingAnt.target = (-1, -1)
+			if (not self.foods[dist[2]].usedForFoodRecalc) and (not dist[1].usedForFoodRecalc) and (self.foods[dist[2]].comingAnt!=dist[1]):
+				# food already had an incoming ant
+				if self.foods[ dist[2]].hasComingAnt() and self.foods[dist[2]].comingAnt.orderName=="1":
+					self.foods[dist[2]].comingAnt.target = (-1,-1)
+					self.foods[dist[2]].comingAnt = None
+				
+				# ant was already targeting food
+				if dist[1].hasTarget() and dist[1].orderName=="1":
+					target_of_ant = dist[1].target
+					targets_coming_ant = self.foods[target_of_ant].comingAnt
+					targets_coming_ant.target = (-1,-1)
+					self.foods[target_of_ant].comingAnt = None
+					
 				dist[1].tryOrder(dist[2], ants, '1', self)
 				self.foods[dist[2]].comingAnt = dist[1]
 				self.foods[dist[2]].usedForFoodRecalc = True
 				dist[1].usedForFoodRecalc = True
 			# order has already been given -> mark as used
-			if self.foods[dist[2]].comingAnt == dist[1]:
+			elif self.foods[dist[2]].comingAnt==dist[1]:
 				dist[1].usedForFoodRecalc = True
 				self.foods[dist[2]].usedForFoodRecalc = True
-		
-		time3 = time.clock()
+		time3=time.clock()
 		
 		# priority 2: attack enemy hills. 20% of closest ants are sent to attack
 		for hill in self.enemyHills:
@@ -400,7 +389,7 @@ class DorphBot:
 			numberOfAttackAnts = int(round(0.2 * len(ants.my_ants())))
 			for i in [j for j in range(numberOfAttackAnts) if len(attackDistances) >= (j + 1)]: # 20%
 				attackDistances[i][1].tryOrder(attackDistances[i][2], ants, '2', self)
-		
+			
 		# Temporarily commented
 		"""
 		# priority 2.5 defend own hills
@@ -427,8 +416,7 @@ class DorphBot:
 					defendDistances[i][1].tryOrder(targetLoc, ants, '3', self)
 		"""
 		
-		time4 = time.clock()
-		
+		time4=time.clock()
 		
 		# priority 3: Freshly created ants. Move away from hill into random direction
 		for hill in [a for a in ants.my_hills() if a in ants.my_ants()]:
@@ -443,13 +431,16 @@ class DorphBot:
 						adjacentPositions.append(ants.destination(ant.loc, 's'))
 					if not self.isBlockedLoc(ants.destination(ant.loc, 'w'), ants):
 						adjacentPositions.append(ants.destination(ant.loc, 'w'))
-					if adjacentPositions:	
+				
+					if adjacentPositions:
 						targetNew = random.choice(adjacentPositions)
 						if not self.isBlockedLoc(targetNew, ants):
 							ant.tryOrder(targetNew, ants, '3', self)
-					
+						
+					break
 		
-		time5 = time.clock()
+		time5=time.clock()
+		
 		
 		# priority 4: Free ants move away from starting hill or move randomly if all own hills were killed
 		# TODO: Map's with multiple hills per player
@@ -469,20 +460,12 @@ class DorphBot:
 				ant.tryOrder(targetNew, ants, "4", self)
 		self.debugPrint("after4")
 		
-		time6 = time.clock()
+		time6=time.clock()
 		
-		for ant in [a for a in self.antList if self.turnnumber == 5]:
-			self.debugPrint(ant)
-		
-		# for ant in [a for a in self.antList if self.turnnumber==1]:
-			# ant.tryOrder((21,19), ants, "1", self)
-		
-		# for ant in [a for a in self.antList if a.loc == (28,19) and self.turnnumber==1]:
-			# ant.tryOrder((19,19), ants, "1", self)
 		for ant in [a for a in self.antList if a.hasTarget()]:
 			ant.move(ants, self)
 		
-		time7 = time.clock()
+		time7=time.clock()
 		
 		self.debugPrint("time used: " + str(int(1000 * (time.clock() - ants.turn_start_time))) + "ms")
 		if int(1000 * (time.clock() - ants.turn_start_time)) > self.maxCPULoad[1]:
