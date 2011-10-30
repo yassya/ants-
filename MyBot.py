@@ -79,13 +79,6 @@ class Ant:
 		breakingFactor = (1+1.0/ants.distance(self.loc,target))
 		def heuristic_cost_estimate(loc1, loc2):
 			return ants.distance(loc1, loc2)*breakingFactor
-		def getNNodes(loc):
-			l = []
-			l.append(ants.destination(loc, 'n'))
-			l.append(ants.destination(loc, 'e'))
-			l.append(ants.destination(loc, 's'))
-			l.append(ants.destination(loc, 'w'))
-			return l
 		def reconstruct_path(node):
 			path = deque()
 			path.appendleft(ants.direction(came_from[node], node)[0])
@@ -115,21 +108,18 @@ class Ant:
 			del f_score[x]
 			
 			closedset.add(x)
-			
 
-			for y in [n for n in getNNodes(x) if bot.rememberedMap[n[0]][n[1]] != 3]:
+			for y in [n for n in bot.mapNeighbours[x]]:
 				if y in closedset:
 					continue
 				tentative_g_score = g_score[x] + ants.distance(x, y)
 				
-				tentative_is_better = bool()
+				tentative_is_better = False
 				if y not in openset:
 					openset.add(y)
 					tentative_is_better = True
 				elif tentative_g_score < g_score[y]:
 					tentative_is_better = True
-				else:
-					tentative_is_better = False
 				
 				if tentative_is_better:
 					came_from[y] = x
@@ -202,6 +192,7 @@ class DorphBot:
 			f = open('debug.txt', 'w')
 			f.close()
 		self.maxCPULoad = [-1,-1] # (round, runtime),
+		self.mapNeighbours = {} # keeps a list of adjacent map locations to speed up A*
 
 	def do_setup(self, ants):
 		self.mapAspect = 1.0 * ants.cols / ants.rows
@@ -209,7 +200,17 @@ class DorphBot:
 			for row in range(ants.rows)]
 		self.rememberedMap = [[-1 for col in range(ants.cols)]
 			for row in range(ants.rows)]
-			
+		
+		for row in range(0, ants.rows):
+			for col in range(0, ants.cols):
+				loc = row, col
+				l = []
+				l.append(ants.destination(loc, 'n'))
+				l.append(ants.destination(loc, 'e'))
+				l.append(ants.destination(loc, 's'))
+				l.append(ants.destination(loc, 'w'))
+				self.mapNeighbours[loc] = l
+				
 	# follow gradient of unknown map squares
 	def gradientTarget(self, loc, ants):
 		row, col = loc
@@ -326,7 +327,10 @@ class DorphBot:
 				loc = row, col
 				if ants.visible(loc):
 					if not ants.passable(loc):
-						self.rememberedMap[row][col] = 3
+						if self.rememberedMap[row][col] != 3:
+							for neigh in self.mapNeighbours[loc]:
+								self.mapNeighbours[neigh].remove(loc)
+							self.rememberedMap[row][col] = 3
 					if self.knownMap[row][col] == 0:
 						self.knownMap[row][col] = self.turnnumber			
 		
@@ -441,7 +445,6 @@ class DorphBot:
 		
 		time5=time.clock()
 		
-		
 		# priority 4: Free ants move away from starting hill or move randomly if all own hills were killed
 		# TODO: Map's with multiple hills per player
 		for ant in [a for a in self.antList if not a.hasTarget()]:
@@ -461,7 +464,7 @@ class DorphBot:
 		self.debugPrint("after4")
 		
 		time6=time.clock()
-		
+
 		for ant in [a for a in self.antList if a.hasTarget()]:
 			ant.move(ants, self)
 		
