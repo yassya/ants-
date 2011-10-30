@@ -4,7 +4,7 @@ import sys
 from operator import itemgetter, attrgetter
 from collections import deque
 
-isDebug = True # Debug Flag to toggle Debug Output into "debug.txt". Has to been False for submitting!
+isDebug = False # Debug Flag to toggle Debug Output into "debug.txt". Has to been False for submitting!
 
 class Ant:
 	loc = (-1, -1)
