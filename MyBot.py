@@ -161,6 +161,7 @@ class Food:
 		self.comingAnt = None
 		self.loc = pLoc
 		self.usedForFoodRecalc = False
+		self.foods = [] #(loc:dist) to all other known food positions
 	def hasComingAnt(self):
 		return self.comingAnt != None
 	def debugPrint(self, msg):
@@ -277,6 +278,19 @@ class DorphBot:
 		else:
 			return False
 
+	# inserts ins into list while keeping ascending order
+	def sortedInsert(self,list,ins):
+		if not list:
+			list.append(ins)
+			return list
+		else:
+			for i in range(len(list)):
+				if ins[1]<list[i][1]:
+					list.insert(i,ins)
+					return list
+			list.append(ins)
+			return list
+
 	def do_turn(self, ants):
 		self.turnnumber += 1
 		self.debugPrint("\nTURN " + str(self.turnnumber))
@@ -306,20 +320,27 @@ class DorphBot:
 		for hill in [a for a in ants.enemy_hills() if a not in self.enemyHills]: 
 			self.enemyHills.append(hill)
 
-		# update foods
-		for foodLoc in [a for a in self.foods if ants.visible(a) and a not in ants.food()]:
-			adjacentPositions = []
-			adjacentPositions.append(ants.destination(foodLoc, 'n'))
-			adjacentPositions.append(ants.destination(foodLoc, 'e'))
-			adjacentPositions.append(ants.destination(foodLoc, 's'))
-			adjacentPositions.append(ants.destination(foodLoc, 'w'))
-			if self.foods[foodLoc].hasComingAnt() and self.foods[foodLoc].comingAnt.orderName=="1":
-				self.foods[foodLoc].comingAnt.orderName = ''
-				self.foods[foodLoc].comingAnt.target = (-1, -1)
-			del self.foods[foodLoc]
-				
-		for foodLoc in [a for a in ants.food() if a not in self.foods]: 
-			self.foods[foodLoc] = Food(foodLoc)
+		# remove eaten food
+		for eatenFoodLoc in [a for a in self.foods if ants.visible(a) and a not in ants.food()]:
+			# check in case food got eaten by enemy ant or accidentally
+			if self.foods[eatenFoodLoc].hasComingAnt() and self.foods[eatenFoodLoc].comingAnt.orderName=="1":
+				self.foods[eatenFoodLoc].comingAnt.orderName = ''
+				self.foods[eatenFoodLoc].comingAnt.target = (-1, -1)
+			# clear distances
+			for otherFoodLoc in [a for a in self.foods if a != eatenFoodLoc]: 
+				deletingDist = ants.distance(eatenFoodLoc, otherFoodLoc)
+				self.foods[otherFoodLoc].foods.remove( (eatenFoodLoc, deletingDist ) )
+			del self.foods[eatenFoodLoc]
+		
+		# new food visible
+		for newFoodLoc in [a for a in ants.food() if a not in self.foods]:
+			self.foods[newFoodLoc] = Food(newFoodLoc)
+			
+			#add distances to other known foods
+			for otherFoodLoc in [a for a in self.foods if a != newFoodLoc]: 
+				dist = ants.distance(newFoodLoc, otherFoodLoc)
+				self.sortedInsert( self.foods[newFoodLoc].foods, (otherFoodLoc,dist) )
+				self.sortedInsert(self.foods[otherFoodLoc].foods, (newFoodLoc,dist))
 
 		#update the map
 		for row in range(0, ants.rows):
@@ -358,29 +379,45 @@ class DorphBot:
 				dist_temp = ants.distance(foodLoc, ant.loc)
 				foodDistances.append((dist_temp, ant, foodLoc))
 		foodDistances.sort(key=itemgetter(0))
+		
 		for dist in foodDistances:
+			activeFood = self.foods[dist[2]]
+			activeAnt = dist[1]
+			
+			# closest food calculation
+			isSkipBecauseTime = False
+			if len(self.foods)>1 and len(self.antList)>1:
+				foodNeigh = self.foods[ activeFood.foods[0][0] ]
+				isFoodNeighTargeted = foodNeigh.hasComingAnt()
+				if isFoodNeighTargeted:
+					distA2F2 = ants.distance(activeAnt.loc, dist[2]) #from potential ant to potential food
+					distA1F1 = ants.distance(foodNeigh.loc, foodNeigh.comingAnt.loc) #from food Neighbour to its coming ant
+					distF1F2 = ants.distance(dist[2], foodNeigh.loc) #from potential food to neighbour food
+					if distA2F2>=(distA1F1+distF1F2):
+						isSkipBecauseTime = True
+			
 			# hasn't been used + order hasn't already been given
-			if (not self.foods[dist[2]].usedForFoodRecalc) and (not dist[1].usedForFoodRecalc) and (self.foods[dist[2]].comingAnt!=dist[1]):
+			if not activeFood.usedForFoodRecalc and not activeAnt.usedForFoodRecalc and activeFood.comingAnt!=activeAnt and not isSkipBecauseTime:
 				# food already had an incoming ant
-				if self.foods[ dist[2]].hasComingAnt() and self.foods[dist[2]].comingAnt.orderName=="1":
-					self.foods[dist[2]].comingAnt.target = (-1,-1)
-					self.foods[dist[2]].comingAnt = None
+				if activeFood.hasComingAnt() and activeFood.comingAnt.orderName=="1":
+					activeFood.comingAnt.target = (-1,-1)
+					activeFood.comingAnt = None
 				
 				# ant was already targeting food
-				if dist[1].hasTarget() and dist[1].orderName=="1":
-					target_of_ant = dist[1].target
+				if activeAnt.hasTarget() and activeAnt.orderName=="1":
+					target_of_ant = activeAnt.target
 					targets_coming_ant = self.foods[target_of_ant].comingAnt
 					targets_coming_ant.target = (-1,-1)
 					self.foods[target_of_ant].comingAnt = None
 					
-				dist[1].tryOrder(dist[2], ants, '1', self)
-				self.foods[dist[2]].comingAnt = dist[1]
-				self.foods[dist[2]].usedForFoodRecalc = True
-				dist[1].usedForFoodRecalc = True
+				activeAnt.tryOrder(dist[2], ants, '1', self)
+				activeFood.comingAnt = activeAnt
+				activeFood.usedForFoodRecalc = True
+				activeAnt.usedForFoodRecalc = True
 			# order has already been given -> mark as used
-			elif self.foods[dist[2]].comingAnt==dist[1]:
-				dist[1].usedForFoodRecalc = True
-				self.foods[dist[2]].usedForFoodRecalc = True
+			elif activeFood.comingAnt==activeAnt:
+				activeAnt.usedForFoodRecalc = True
+				activeFood.usedForFoodRecalc = True
 		time3=time.clock()
 		
 		# priority 2: attack enemy hills. 20% of closest ants are sent to attack
