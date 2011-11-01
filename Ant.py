@@ -17,6 +17,10 @@ class Ant:
 		return self.loc == other
 	def __repr__(self):
 		return repr((self.loc, self.target))
+	def cancelOrder(self):
+		self.orderName = ''
+		self.target = (-1, -1)
+		self.waypoints = deque()
 	def debugPrint(self, msg):
 			if isDebug:
 				f = open('debug.txt', 'a')
@@ -137,7 +141,7 @@ class Ant:
 	def move(self, ants, bot):
 		if self.waypoints and bot.isBlockedLoc(ants.destination(self.loc, self.waypoints[0]), ants):
 			self.waypoints = self.generateWaypointsAStar(self.target, bot, ants)
-		if self.waypoints and not bot.isBlockedLoc(ants.destination(self.loc, self.waypoints[0]), ants):
+		elif self.waypoints and not bot.isBlockedLoc(ants.destination(self.loc, self.waypoints[0]), ants):
 			next_wp = self.waypoints[0]
 			#run away from enemy ants
 			nCloseAnts=0
@@ -159,5 +163,4 @@ class Ant:
 			self.waypoints.popleft()
 			bot.soonOccupied.add(self.loc)
 		else:
-			self.target = (-1, -1)
-			self.orderName=''
+			self.cancelOrder()
