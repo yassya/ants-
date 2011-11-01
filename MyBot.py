@@ -284,7 +284,7 @@ class MyBot:
 				attackDistances.append((dist_temp, ant, hill[0]))
 			attackDistances.sort(key=itemgetter(0, 2))
 			numberOfAttackAnts = int(round(0.5 * len(ants.my_ants())))	
-			numberOfAttackingAnts=len([i for i in self.antList if not i.isAttacking==(-1,-1)])		
+			numberOfAttackingAnts=len([i for i in self.antList if i.isAttacking])
 			for i in [j for j in range(numberOfAttackAnts) if (len(attackDistances)-numberOfAttackingAnts) >= (j + 1)]: # 50%
 				attackDistances[i][1].tryOrder(attackDistances[i][2], ants, '2', self)
 				attackDistances[i][1].isAttacking=True
