@@ -12,6 +12,7 @@ class Ant:
 		self.target = (-1, -1)
 		self.loc = pLoc
 		self.usedForFoodRecalc = False
+		self.isAttacking=False
 	def __eq__(self, other):  #ah well :)
 		return self.loc == other
 	def __repr__(self):
@@ -22,6 +23,8 @@ class Ant:
 				f.write(str(msg) + "\n")
 				f.close()
 	def hasTarget(self):
+		if self.orderName=='4':
+			return False
 		return self.target != (-1, -1)
 	def getTarget(self):
 		return self.target
@@ -136,15 +139,21 @@ class Ant:
 			self.waypoints = self.generateWaypointsAStar(self.target, bot, ants)
 		if self.waypoints and not bot.isBlockedLoc(ants.destination(self.loc, self.waypoints[0]), ants):
 			next_wp = self.waypoints[0]
-			#run away from enemy ants:
+			#run away from enemy ants
+			nCloseAnts=0
+			for myAnt in [j for j in ants.my_ants() if ants.distance(j, self.loc)<=3]:
+				nCloseAnts+=1
+			nEnemyAnts=0
 			for enAnt in ants.enemy_ants():
 				if ants.distance(enAnt[0], ants.destination(self.loc,next_wp))<=3:
-					if not bot.isBlockedLoc(ants.destination(self.loc, bot.oppositeDirection(next_wp)), ants):
-						self.waypoints.appendleft(next_wp)
-						self.waypoints.appendleft(next_wp)#go back next turn
-						next_wp=bot.oppositeDirection(next_wp)#these 3 lines can be replaced by more sophisticated flee direction
-						self.waypoints.appendleft(next_wp)#the right element needs to be popped
-						break
+					nEnemyAnts+=1
+			if nEnemyAnts>=nCloseAnts:
+				if not bot.isBlockedLoc(ants.destination(self.loc, bot.oppositeDirection(next_wp)), ants):
+					self.waypoints.appendleft(next_wp)
+					self.waypoints.appendleft(next_wp)#go back next turn
+					next_wp=bot.oppositeDirection(next_wp)#these 3 lines can be replaced by more sophisticated flee direction
+					self.waypoints.appendleft(next_wp)#the right element needs to be popped
+					
 			ants.issue_order((self.loc, next_wp))
 			self.loc = ants.destination(self.loc, next_wp)
 			self.waypoints.popleft()
