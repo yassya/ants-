@@ -168,8 +168,7 @@ class MyBot:
 			self.enemyHills.remove(hill)
 			# ants attacking that hill are now free again
 			for ant in [a for a in self.antList if a.getTarget() == hill[0] and a.orderName == '2']:
-				ant.orderName = ''
-				ant.target = (-1, -1)
+				ant.cancelOrder()
 				ant.isAttacking=False
 
 		# update list of enemy hills if new ones become visible
@@ -180,8 +179,7 @@ class MyBot:
 		for eatenFoodLoc in [a for a in self.foods if ants.visible(a) and a not in ants.food()]:
 			# check in case food got eaten by enemy ant or accidentally
 			if self.foods[eatenFoodLoc].hasComingAnt() and self.foods[eatenFoodLoc].comingAnt.orderName=="1":
-				self.foods[eatenFoodLoc].comingAnt.orderName = ''
-				self.foods[eatenFoodLoc].comingAnt.target = (-1, -1)
+				self.foods[eatenFoodLoc].comingAnt.cancelOrder()
 			# clear distances
 			for otherFoodLoc in [a for a in self.foods if a != eatenFoodLoc]: 
 				deletingDist = ants.distance(eatenFoodLoc, otherFoodLoc)
@@ -255,14 +253,14 @@ class MyBot:
 			if not activeFood.usedForFoodRecalc and not activeAnt.usedForFoodRecalc and activeFood.comingAnt!=activeAnt and not isSkipBecauseTime:
 				# food already had an incoming ant
 				if activeFood.hasComingAnt() and activeFood.comingAnt.orderName=="1":
-					activeFood.comingAnt.target = (-1,-1)
+					activeFood.comingAnt.cancelOrder()
 					activeFood.comingAnt = None
 				
 				# ant was already targeting food
 				if activeAnt.hasTarget() and activeAnt.orderName=="1":
 					target_of_ant = activeAnt.target
 					targets_coming_ant = self.foods[target_of_ant].comingAnt
-					targets_coming_ant.target = (-1,-1)
+					targets_coming_ant.cancelOrder()
 					self.foods[target_of_ant].comingAnt = None
 					
 				activeAnt.tryOrder(dist[2], ants, '1', self)
@@ -332,7 +330,6 @@ class MyBot:
 						adjacentPositions.append(ants.destination(ant.loc, 's'))
 					if not self.isBlockedLoc(ants.destination(ant.loc, 'w'), ants):
 						adjacentPositions.append(ants.destination(ant.loc, 'w'))
-				
 					if adjacentPositions:
 						targetNew = random.choice(adjacentPositions)
 						if not self.isBlockedLoc(targetNew, ants):
