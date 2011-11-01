@@ -162,5 +162,5 @@ class Ant:
 			self.loc = ants.destination(self.loc, next_wp)
 			self.waypoints.popleft()
 			bot.soonOccupied.add(self.loc)
-		else:
+		if not self.waypoints:
 			self.cancelOrder()
