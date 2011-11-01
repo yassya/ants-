@@ -342,9 +342,9 @@ class MyBot:
 		
 		time5=time.clock()
 		
-		# priority 4: Free ants move away from starting hill or move randomly if all own hills were killed
-		# TODO: Map's with multiple hills per player
-		for ant in [a for a in self.antList if not a.hasTarget()]:
+	#	 priority 4: Free ants move away from starting hill or move randomly if all own hills were killed
+	#	 TODO: Map's with multiple hills per player
+		for ant in [a for a in self.antList if not a.hasTarget() and a.orderName!='4']:
 			targetList = self.gradientTarget(ant.loc, ants)	
 			targetNew = None
 			if len(targetList) == 1:
@@ -362,7 +362,7 @@ class MyBot:
 		
 		time6=time.clock()
 
-		for ant in [a for a in self.antList if a.hasTarget()]:
+		for ant in [a for a in self.antList if a.hasTarget or a.orderName=='4']:
 			ant.move(ants, self)
 		
 		time7=time.clock()

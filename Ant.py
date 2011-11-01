@@ -159,4 +159,5 @@ class Ant:
 			self.waypoints.popleft()
 			bot.soonOccupied.add(self.loc)
 		else:
-			 self.target = (-1, -1)
+			self.target = (-1, -1)
+			self.orderName=''
