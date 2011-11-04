@@ -13,6 +13,7 @@ class Ant:
 		self.loc = pLoc
 		self.usedForFoodRecalc = False
 		self.isAttacking=False
+		self.doNotMove=True
 	def __eq__(self, other):  #ah well :)
 		return self.loc == other
 	def __repr__(self):
@@ -27,6 +28,8 @@ class Ant:
 				f.write(str(msg) + "\n")
 				f.close()
 	def hasTarget(self):
+		if self.doNotMove:
+			return True
 		if self.orderName=='4':
 			return False
 		return self.target != (-1, -1)
