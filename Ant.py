@@ -13,7 +13,7 @@ class Ant:
 		self.loc = pLoc
 		self.usedForFoodRecalc = False
 		self.isAttacking=False
-		self.doNotMove=True
+#		self.doNotMove=False
 	def __eq__(self, other):  #ah well :)
 		return self.loc == other
 	def __repr__(self):
@@ -28,7 +28,7 @@ class Ant:
 				f.write(str(msg) + "\n")
 				f.close()
 	def hasTarget(self):
-		if self.doNotMove:
+		if self.orderName=='5':
 			return True
 		if self.orderName=='4':
 			return False
@@ -135,15 +135,26 @@ class Ant:
 					f_score[y] = g_score[y] + h_score[y]
 
 	def tryOrder(self, ptarget, ants, ordername, bot):
-		if bot.rememberedMap[ptarget[0]][ptarget[1]] != 3 and ptarget != self.target:
+		if bot.rememberedMap[ptarget[0]][ptarget[1]] != 3 and bot.rememberedMap[ptarget[0]][ptarget[1]] != 4 and ptarget != self.target:
 			self.target = ptarget
 			self.debugPrint("order " + str(ordername) + ": " + str(self.loc) + " -> " + str(ptarget))
 			self.waypoints = self.generateWaypointsAStar(ptarget, bot, ants)
 			self.orderName = ordername
 			bot.debugOrderCounter[ordername] += 1
 	def move(self, ants, bot):
+		if self.orderName=='5':
+			self.debugPrint(self.waypoints)
 		if self.waypoints and bot.isBlockedLoc(ants.destination(self.loc, self.waypoints[0]), ants):
-			self.waypoints = self.generateWaypointsAStar(self.target, bot, ants)
+			if self.orderName=='5' and ants.destination(self.loc, self.waypoints[0])==self.target:
+				next_wp = self.waypoints[0]
+				ants.issue_order((self.loc, next_wp))
+				self.loc = ants.destination(self.loc, next_wp)
+				self.waypoints.popleft()
+				bot.soonOccupied.add(self.loc)
+			elif self.orderName=='5' and ants.destination(self.loc, self.waypoints[0]) in ants.my_ants():
+				pass #thats right, in that case we *want* to wait until the field is free!
+			else:
+				self.waypoints = self.generateWaypointsAStar(self.target, bot, ants)
 		elif self.waypoints and not bot.isBlockedLoc(ants.destination(self.loc, self.waypoints[0]), ants):
 			next_wp = self.waypoints[0]
 			#run away from enemy ants
@@ -166,4 +177,6 @@ class Ant:
 			self.waypoints.popleft()
 			bot.soonOccupied.add(self.loc)
 		if not self.waypoints:
-			self.cancelOrder()
+			if not self.orderName=='5':
+				self.cancelOrder()
+			
