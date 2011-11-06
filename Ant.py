@@ -159,11 +159,11 @@ class Ant:
 			next_wp = self.waypoints[0]
 			#run away from enemy ants
 			nCloseAnts=0
-			for myAnt in [j for j in ants.my_ants() if ants.distance(j, self.loc)<=3]:
+			for myAnt in [j for j in ants.my_ants() if ants.radius2(j, self.loc)<=ants.attackradius2]:
 				nCloseAnts+=1
 			nEnemyAnts=0
 			for enAnt in ants.enemy_ants():
-				if ants.distance(enAnt[0], ants.destination(self.loc,next_wp))<=3:
+				if ants.radius2(enAnt[0], ants.destination(self.loc,next_wp))<=ants.attackradius2:
 					nEnemyAnts+=1
 			if nEnemyAnts>=nCloseAnts:
 				if not bot.isBlockedLoc(ants.destination(self.loc, bot.oppositeDirection(next_wp)), ants):
