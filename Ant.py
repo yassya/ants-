@@ -1,19 +1,20 @@
 from ants import *
 from collections import deque
+from numpy import array
 from MyBot import MyBot
 from MyBot import isDebug
 
 class Ant:
 	loc = (-1, -1)
-	
+	velo = array([0, 0])
 	orderName = ""
 	waypoints = deque()
 	def __init__(self, pLoc):
 		self.target = (-1, -1)
 		self.loc = pLoc
 		self.usedForFoodRecalc = False
-		self.isAttacking=False
-#		self.doNotMove=False
+		self.isAttacking = False
+		self.isExploring=False
 	def __eq__(self, other):  #ah well :)
 		return self.loc == other
 	def __repr__(self):
@@ -28,9 +29,9 @@ class Ant:
 				f.write(str(msg) + "\n")
 				f.close()
 	def hasTarget(self):
-		if self.orderName=='5':
+		if self.orderName == '5':
 			return True
-		if self.orderName=='4':
+		if self.orderName == '4':
 			return False
 		return self.target != (-1, -1)
 	def getTarget(self):
@@ -56,36 +57,36 @@ class Ant:
 			l.append(ants.destination(loc, 'w'))
 			return l
 			
-		def jump(c,n,s,g):
-			direct=ants.direction(c, n) # n contains field, dir n,e,s,w
-			if bot.rememberedMap[direct[0]][direct[1]]== 3:
+		def jump(c, n, s, g):
+			direct = ants.direction(c, n) # n contains field, dir n,e,s,w
+			if bot.rememberedMap[direct[0]][direct[1]] == 3:
 				return 0
-			if n==g:
+			if n == g:
 				return n
-		def prune(s,x,y):
-			return ants.distance(s,y)>=ants.distance(x,y)
+		def prune(s, x, y):
+			return ants.distance(s, y) >= ants.distance(x, y)
 			
 			
 		def reconstruct_path(successors):
 			pass
 
-		currNode=self.loc
-		startNode=self.loc
-		goalNode=target
+		currNode = self.loc
+		startNode = self.loc
+		goalNode = target
 		
-		successors=deque()
-		for y in [n for n in getNNodes(currNode) if not prune(startNode,currNode,n)]:
-			jumpPoints=jump(currNode,n,startNode,goalNode)
-			successors=(jumpPoints)
+		successors = deque()
+		for y in [n for n in getNNodes(currNode) if not prune(startNode, currNode, n)]:
+			jumpPoints = jump(currNode, n, startNode, goalNode)
+			successors = (jumpPoints)
 		return reconstruct_path(successors)
 	
 	# wikipedia-algorithm implementation for A*
 	def generateWaypointsAStar(self, target, bot, ants):
 		if self.loc == target:
 			return deque()
-		breakingFactor = (1+1.0/ants.distance(self.loc,target))
+		breakingFactor = (1 + 1.0 / ants.distance(self.loc, target))
 		def heuristic_cost_estimate(loc1, loc2):
-			return ants.distance(loc1, loc2)*breakingFactor
+			return ants.distance(loc1, loc2) * breakingFactor
 		def reconstruct_path(node):
 			path = deque()
 			path.appendleft(ants.direction(came_from[node], node)[0])
@@ -141,42 +142,83 @@ class Ant:
 			self.waypoints = self.generateWaypointsAStar(ptarget, bot, ants)
 			self.orderName = ordername
 			bot.debugOrderCounter[ordername] += 1
+			if ordername!='6' and self.isExploring:
+				self.isExploring=False
 	def move(self, ants, bot):
-		if self.orderName=='5':
+		if self.orderName == '5':
 			self.debugPrint(self.waypoints)
 		if self.waypoints and bot.isBlockedLoc(ants.destination(self.loc, self.waypoints[0]), ants):
-			if self.orderName=='5' and ants.destination(self.loc, self.waypoints[0])==self.target:
+			if self.orderName == '5' and ants.destination(self.loc, self.waypoints[0]) == self.target:
 				next_wp = self.waypoints[0]
 				ants.issue_order((self.loc, next_wp))
+				self.velo = (0, 0)
 				self.loc = ants.destination(self.loc, next_wp)
 				self.waypoints.popleft()
 				bot.soonOccupied.add(self.loc)
-			elif self.orderName=='5' and ants.destination(self.loc, self.waypoints[0]) in ants.my_ants():
+			elif self.orderName == '5' and ants.destination(self.loc, self.waypoints[0]) in ants.my_ants():
+				self.velo = (0, 0)
 				pass #thats right, in that case we *want* to wait until the field is free!
 			else:
 				self.waypoints = self.generateWaypointsAStar(self.target, bot, ants)
 		elif self.waypoints and not bot.isBlockedLoc(ants.destination(self.loc, self.waypoints[0]), ants):
 			next_wp = self.waypoints[0]
 			#run away from enemy ants
-			nCloseAnts=0
-			for myAnt in [j for j in ants.my_ants() if ants.radius2(j, self.loc)<=ants.attackradius2]:
-				nCloseAnts+=1
-			nEnemyAnts=0
+			nCloseAnts = 0
+			for myAnt in [j for j in ants.my_ants() if ants.radius2(j, self.loc) <= ants.attackradius2]:
+				nCloseAnts += 1
+			nEnemyAnts = 0
 			for enAnt in ants.enemy_ants():
-				if ants.radius2(enAnt[0], ants.destination(self.loc,next_wp))<=ants.attackradius2:
-					nEnemyAnts+=1
-			if nEnemyAnts>=nCloseAnts:
+				if ants.radius2(enAnt[0], ants.destination(self.loc, next_wp)) <= ants.attackradius2:
+					nEnemyAnts += 1
+			if nEnemyAnts >= nCloseAnts:
 				if not bot.isBlockedLoc(ants.destination(self.loc, bot.oppositeDirection(next_wp)), ants):
 					self.waypoints.appendleft(next_wp)
 					self.waypoints.appendleft(next_wp)#go back next turn
-					next_wp=bot.oppositeDirection(next_wp)#these 3 lines can be replaced by more sophisticated flee direction
+					next_wp = bot.oppositeDirection(next_wp)#these 3 lines can be replaced by more sophisticated flee direction
 					self.waypoints.appendleft(next_wp)#the right element needs to be popped
-					
+			desti = ants.destination(self.loc, next_wp)
 			ants.issue_order((self.loc, next_wp))
-			self.loc = ants.destination(self.loc, next_wp)
+			self.velo = (desti[0] - self.loc[0], desti[1] - self.loc[1])
+			self.loc = desti
 			self.waypoints.popleft()
 			bot.soonOccupied.add(self.loc)
 		if not self.waypoints:
-			if not self.orderName=='5':
+			self.velo = (0, 0)
+			if not self.orderName == '5':
 				self.cancelOrder()
-			
+				
+				
+	def boidMove(self, bot,ants, nAnts):
+		perc_center = bot.AntCenter - self.loc
+		perc_center = perc_center / (nAnts - 1)
+		center_bias = (perc_center - self.loc)/32
+
+		perc_velo = bot.AntVelo - self.velo
+		perc_velo = perc_velo / (nAnts - 1)
+		velo_bias = (perc_velo - self.velo)/16
+		
+		chill=array([0,0])
+		for otherAnt in [a for a in bot.antList if a.loc !=self.loc and a.orderName!='5']:
+			if ants.distance(otherAnt.loc,self.loc)<6:
+				chill=chill+self.loc
+				chill=chill-otherAnt.loc
+		chill=chill
+		deltaV=self.velo+center_bias+velo_bias+chill
+		
+		dX=round(deltaV[0])
+		dY=round(deltaV[1])
+		deltaV=array([dX,dY])
+		
+		target=(int(self.loc[0]+dX)%ants.rows,int(self.loc[1]+dY)%ants.cols)
+		
+		
+		
+		self.debugPrint("Ant at \t"+str(self.loc))
+		self.debugPrint("\tPerc. center\t"+str(perc_center))
+		self.debugPrint("\tCenter Bias\t"+str(center_bias))
+		self.debugPrint("\tPerc. velo\t"+str(perc_velo))
+		self.debugPrint("\tVelo bias\t"+str(velo_bias))
+		self.debugPrint("\tChill\t\t"+str(chill))
+		self.debugPrint("\tdeltaV\t\t"+str(deltaV))
+		self.debugPrint("\tnew target\t"+str(target))
+		self.tryOrder(target, ants, '4', bot)

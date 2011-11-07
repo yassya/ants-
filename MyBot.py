@@ -3,7 +3,9 @@ from ants import *
 import sys
 from operator import itemgetter, attrgetter
 from collections import deque
+from numpy import array
 import Ant
+
 
 isDebug = True # Debug Flag to toggle Debug Output into "debug.txt". Has to been False for submitting!
 
@@ -47,7 +49,8 @@ class MyBot:
 			f.close()
 		self.maxCPULoad = [-1, -1] # (round, runtime),
 		self.mapNeighbours = {} # keeps a list of adjacent map locations to speed up A*
-
+		self.AntCenter=array([-1,-1])
+		self.AntVelo=array([-1,-1])
 	def do_setup(self, ants):
 		self.mapAspect = 1.0 * ants.cols / ants.rows
 		self.knownMap = [[0 for col in range(ants.cols)]
@@ -113,6 +116,8 @@ class MyBot:
 
 # return true if loc is blocked by wall or ant (of that ant doesn't move away) or will be blocked by ant next turn
 	def isBlockedLoc(self, loc, ants):
+		if loc in ants.my_hills():
+			return True
 		if self.rememberedMap[loc[0]][loc[1]] == 3 : # water
 			return True
 		if self.rememberedMap[loc[0]][loc[1]] == 4 : #own ant defending
@@ -156,6 +161,7 @@ class MyBot:
 		self.debugOrderCounter['3'] = 0
 		self.debugOrderCounter['4'] = 0
 		self.debugOrderCounter['5'] = 0
+		self.debugOrderCounter['6'] = 0
 
 		# if self.turnnumber in [1,14,61]:
 			# self.debugPrint("wall: "+str(self.rememberedMap[9][65]))
@@ -215,7 +221,7 @@ class MyBot:
 					if self.knownMap[row][col] == 0:
 						self.knownMap[row][col] = self.turnnumber
 				rowString += str(self.rememberedMap[row][col])	
-			self.debugPrint(rowString.replace('-1', 'X'))
+#			self.debugPrint(rowString.replace('-1', 'X'))
 		#add newborn ants to antlist				
 		for locAntNewborn in [a for a in ants.my_hills() if not a in self.antList]:
 				if not ants.unoccupied(locAntNewborn):
@@ -235,6 +241,22 @@ class MyBot:
 					self.mapNeighbours[neigh].append(ant.loc)						
 
 		
+		
+		#calc center and velocity of ants
+		self.AntCenter=array([0,0])
+		self.AntVelo=array([0,0])
+		for ant in self.antList:
+			if not ant.orderName=='5':
+				self.AntCenter+=ant.loc
+				self.AntVelo+=ant.velo
+			
+		nAnts=len(self.antList)
+#		self.AntVelo=self.AntVelo/nAnts
+#		self.AntCenter=self.AntCenter/nAnts
+#		
+		if nAnts>0:
+			self.debugPrint("Center of ants:\t"+str(self.AntCenter/nAnts))
+			self.debugPrint("Avg. Velo of ants:\t"+str(self.AntVelo/nAnts))
 		
 #		for ant in [a for a in self.antList if a.orderName==5]:
 #			if ant.loc==ant.target:
@@ -336,7 +358,7 @@ class MyBot:
 		
 		
 		#experimental: build 8-ant cage
-		if(len(self.antList) > 20):
+		if(len(self.antList) > 10+10*len(ants.my_hills())):
 			for hill in ants.my_hills():
 				targetLocs = []
 			
@@ -352,7 +374,7 @@ class MyBot:
 				for ant in [a for a in self.antList if a.loc == hill if not a.hasTarget()]:
 					
 					notUsed = [a for a in targetLocs if not (self.rememberedMap[a[0]][a[1]] == 4 or self.rememberedMap[a[0]][a[1]] == 3)]
-					self.debugPrint(notUsed)
+#					self.debugPrint(notUsed)
 					if notUsed:
 						ant.tryOrder(notUsed[0], ants, '5', self)
 						self.rememberedMap[notUsed[0][0]][notUsed[0][1]] = 4						
@@ -370,48 +392,63 @@ class MyBot:
 						
 				
 		
-		# priority 3: Freshly created ants. Move away from hill into random direction
-#		for hill in [a for a in ants.my_hills() if a in ants.my_ants()]:
-#			for ant in [a for a in self.antList if a.loc == hill if not a.hasTarget()]:
-#				if not ants.unoccupied(ant.loc):
-#					adjacentPositions = []
-#					if not self.isBlockedLoc(ants.destination(ant.loc, 'n'), ants):
-#						adjacentPositions.append(ants.destination(ant.loc, 'n'))
-#					if not self.isBlockedLoc(ants.destination(ant.loc, 'e'), ants):
-#						adjacentPositions.append(ants.destination(ant.loc, 'e'))
-#					if not self.isBlockedLoc(ants.destination(ant.loc, 's'), ants):
-#						adjacentPositions.append(ants.destination(ant.loc, 's'))
-#					if not self.isBlockedLoc(ants.destination(ant.loc, 'w'), ants):
-#						adjacentPositions.append(ants.destination(ant.loc, 'w'))
-#					if adjacentPositions:
-#						targetNew = random.choice(adjacentPositions)
-#						if not self.isBlockedLoc(targetNew, ants):
-#							ant.tryOrder(targetNew, ants, '3', self)
-#						
-#					break
+#		 priority 3: Freshly created ants. Move away from hill into random direction
+		for hill in [a for a in ants.my_hills() if a in ants.my_ants()]:
+			for ant in [a for a in self.antList if a.loc == hill if not a.hasTarget()]:
+				if not ants.unoccupied(ant.loc):
+					adjacentPositions = []
+					if not self.isBlockedLoc(ants.destination(ant.loc, 'n'), ants):
+						adjacentPositions.append(ants.destination(ant.loc, 'n'))
+					if not self.isBlockedLoc(ants.destination(ant.loc, 'e'), ants):
+						adjacentPositions.append(ants.destination(ant.loc, 'e'))
+					if not self.isBlockedLoc(ants.destination(ant.loc, 's'), ants):
+						adjacentPositions.append(ants.destination(ant.loc, 's'))
+					if not self.isBlockedLoc(ants.destination(ant.loc, 'w'), ants):
+						adjacentPositions.append(ants.destination(ant.loc, 'w'))
+					if adjacentPositions:
+						targetNew = random.choice(adjacentPositions)
+						if not self.isBlockedLoc(targetNew, ants):
+							ant.tryOrder(targetNew, ants, '3', self)
+						
+					break
 		
+		
+		
+	#	 priority 6: Explore the map
+		nExplorers=len([a for a in self.antList if a.isExploring])
+		for ant in [a for a in self.antList if not a.hasTarget()]:
+			if(nExplorers<5):
+				targetList = self.gradientTarget(ant.loc, ants)	
+				targetNew = None
+				if len(targetList) == 1:
+					targetNew = targetList[0]
+				else: #take a random one which points away from the anthill
+					if ants.my_hills():
+						hillTarget = ant.loc, ants.my_hills()[0]
+						#if ants.distance(ant.loc, ants.my_hills()[0]) < 7:
+						for target in [a for a in targetList if a == hillTarget]:
+							targetList.remove(target)
+					targetNew = random.choice(targetList)
+				if targetNew != None:
+					ant.tryOrder(targetNew, ants, "6", self)
+					ant.isExploring=True
+					nExplorers+=1
+			
+	
 		time5 = time.clock()
 		
-	#	 priority 4: Free ants move away from starting hill or move randomly if all own hills were killed
-	#	 TODO: Map's with multiple hills per player
-		for ant in [a for a in self.antList if not a.hasTarget() and a.orderName != '4']:
-			targetList = self.gradientTarget(ant.loc, ants)	
-			targetNew = None
-			if len(targetList) == 1:
-				targetNew = targetList[0]
-			else: #take a random one which points away from the anthill
-				if ants.my_hills():
-					hillTarget = ant.loc, ants.my_hills()[0]
-					#if ants.distance(ant.loc, ants.my_hills()[0]) < 7:
-					for target in [a for a in targetList if a == hillTarget]:
-						targetList.remove(target)
-				targetNew = random.choice(targetList)
-			if targetNew != None:
-				ant.tryOrder(targetNew, ants, "4", self)
-		self.debugPrint("after4")
+		
+		
+	
+	#rest of the ants do some flocking behaviour
+		if(nAnts>1):
+			for ant in [a for a in self.antList if not a.hasTarget()]:
+				ant.boidMove(self,ants,nAnts)
+	
+	
 		
 		time6 = time.clock()
-
+		self.debugPrint("flocking time: "+str((time6-time5)*1000))
 		for ant in [a for a in self.antList if a.hasTarget or a.orderName == '4']:
 			ant.move(ants, self)
 		
