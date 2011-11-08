@@ -163,14 +163,14 @@ class Ant:
 		elif self.waypoints and not bot.isBlockedLoc(ants.destination(self.loc, self.waypoints[0]), ants):
 			next_wp = self.waypoints[0]
 			#run away from enemy ants
-			nCloseAnts = 0
-			for myAnt in [j for j in ants.my_ants() if ants.radius2(j, self.loc) <= ants.attackradius2]:
-				nCloseAnts += 1
+			ownAnts=set()
 			nEnemyAnts = 0
 			for enAnt in ants.enemy_ants():
-				if ants.radius2(enAnt[0], ants.destination(self.loc, next_wp)) <= ants.attackradius2:
+				if ants.radius2(enAnt[0], ants.destination(self.loc, next_wp)) <= ants.attackradius2+1:
 					nEnemyAnts += 1
-			if nEnemyAnts >= nCloseAnts:
+					ownAnts|=bot.closebyEnemyAntsDistances[enAnt[0]]
+			self.debugPrint(ownAnts)
+			if nEnemyAnts>0 and nEnemyAnts >= len(ownAnts):
 				if not bot.isBlockedLoc(ants.destination(self.loc, bot.oppositeDirection(next_wp)), ants):
 					self.waypoints.appendleft(next_wp)
 					self.waypoints.appendleft(next_wp)#go back next turn
@@ -191,18 +191,18 @@ class Ant:
 	def boidMove(self, bot,ants, nAnts):
 		perc_center = bot.AntCenter - self.loc
 		perc_center = perc_center / (nAnts - 1)
-		center_bias = (perc_center - self.loc)/32
+		center_bias = (perc_center - self.loc)/16
 
 		perc_velo = bot.AntVelo - self.velo
 		perc_velo = perc_velo / (nAnts - 1)
-		velo_bias = (perc_velo - self.velo)/16
+		velo_bias = (perc_velo - self.velo)/8
 		
 		chill=array([0,0])
 		for otherAnt in [a for a in bot.antList if a.loc !=self.loc and a.orderName!='5']:
-			if ants.distance(otherAnt.loc,self.loc)<6:
+			if ants.distance(otherAnt.loc,self.loc)<10:
 				chill=chill+self.loc
 				chill=chill-otherAnt.loc
-		chill=chill
+		
 		deltaV=self.velo+center_bias+velo_bias+chill
 		
 		dX=round(deltaV[0])
@@ -213,12 +213,12 @@ class Ant:
 		
 		
 		
-		self.debugPrint("Ant at \t"+str(self.loc))
-		self.debugPrint("\tPerc. center\t"+str(perc_center))
-		self.debugPrint("\tCenter Bias\t"+str(center_bias))
-		self.debugPrint("\tPerc. velo\t"+str(perc_velo))
-		self.debugPrint("\tVelo bias\t"+str(velo_bias))
-		self.debugPrint("\tChill\t\t"+str(chill))
-		self.debugPrint("\tdeltaV\t\t"+str(deltaV))
-		self.debugPrint("\tnew target\t"+str(target))
+#		self.debugPrint("Ant at \t"+str(self.loc))
+#		self.debugPrint("\tPerc. center\t"+str(perc_center))
+#		self.debugPrint("\tCenter Bias\t"+str(center_bias))
+#		self.debugPrint("\tPerc. velo\t"+str(perc_velo))
+#		self.debugPrint("\tVelo bias\t"+str(velo_bias))
+#		self.debugPrint("\tChill\t\t"+str(chill))
+#		self.debugPrint("\tdeltaV\t\t"+str(deltaV))
+#		self.debugPrint("\tnew target\t"+str(target))
 		self.tryOrder(target, ants, '4', bot)

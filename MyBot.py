@@ -51,6 +51,8 @@ class MyBot:
 		self.mapNeighbours = {} # keeps a list of adjacent map locations to speed up A*
 		self.AntCenter=array([-1,-1])
 		self.AntVelo=array([-1,-1])
+		
+		self.closebyEnemyAntsDistances={}
 	def do_setup(self, ants):
 		self.mapAspect = 1.0 * ants.cols / ants.rows
 		self.knownMap = [[0 for col in range(ants.cols)]
@@ -254,10 +256,24 @@ class MyBot:
 #		self.AntVelo=self.AntVelo/nAnts
 #		self.AntCenter=self.AntCenter/nAnts
 #		
-		if nAnts>0:
-			self.debugPrint("Center of ants:\t"+str(self.AntCenter/nAnts))
-			self.debugPrint("Avg. Velo of ants:\t"+str(self.AntVelo/nAnts))
+#		if nAnts>0:
+#			self.debugPrint("Center of ants:\t"+str(self.AntCenter/nAnts))
+#			self.debugPrint("Avg. Velo of ants:\t"+str(self.AntVelo/nAnts))
+
+
+		#count own ants closeby enemy ants
+		self.closebyEnemyAntsDistances={}
 		
+		for enAnt in ants.enemy_ants():
+			self.closebyEnemyAntsDistances[enAnt[0]]=set()
+			for ant in ants.my_ants():
+				dist=ants.radius2(enAnt[0], ant)
+				if dist <= ants.attackradius2:
+					self.closebyEnemyAntsDistances[enAnt[0]].add(ant)
+					
+		self.debugPrint(str(self.closebyEnemyAntsDistances))
+						
+					
 #		for ant in [a for a in self.antList if a.orderName==5]:
 #			if ant.loc==ant.target:
 #				self.knownMap[ant.loc[0]][ant.loc[1]]=4
@@ -417,7 +433,7 @@ class MyBot:
 	#	 priority 6: Explore the map
 		nExplorers=len([a for a in self.antList if a.isExploring])
 		for ant in [a for a in self.antList if not a.hasTarget()]:
-			if(nExplorers<5):
+			if(nExplorers<len(self.antList)*0.3): #30%
 				targetList = self.gradientTarget(ant.loc, ants)	
 				targetNew = None
 				if len(targetList) == 1:
