@@ -104,9 +104,13 @@ class Ant:
 			if ordername!='6' and self.isExploring:
 				self.isExploring=False
 	def move(self, ants, bot):
-		if self.orderName == '5':
+		if self.orderName == '6':
 			self.debugPrint(self.waypoints)
+			self.debugPrint(self.loc)
+			self.debugPrint(self.target)
+			self.debugPrint(bot.isBlockedLoc(ants.destination(self.loc, self.waypoints[0]),ants))
 		if self.waypoints and bot.isBlockedLoc(ants.destination(self.loc, self.waypoints[0]), ants):
+			
 			if self.orderName == '5' and ants.destination(self.loc, self.waypoints[0]) == self.target:
 				next_wp = self.waypoints[0]
 				ants.issue_order((self.loc, next_wp))
@@ -114,10 +118,12 @@ class Ant:
 				self.loc = ants.destination(self.loc, next_wp)
 				self.waypoints.popleft()
 				bot.soonOccupied.add(self.loc)
-			elif self.orderName == '5' and ants.destination(self.loc, self.waypoints[0]) in ants.my_ants():
+			elif self.orderName == '5' and (ants.destination(self.loc, self.waypoints[0]) in ants.my_ants() or ants.destination(self.loc, self.waypoints[0]) in bot.soonOccupied):
 				self.velo = (0, 0)
+		
 				pass #thats right, in that case we *want* to wait until the field is free!
 			else:
+				self.debugPrint(self.orderName)
 				self.waypoints = self.generateWaypointsAStar(self.target, bot, ants)
 		elif self.waypoints and not bot.isBlockedLoc(ants.destination(self.loc, self.waypoints[0]), ants):
 			next_wp = self.waypoints[0]
@@ -184,17 +190,17 @@ class Ant:
 		
 		
 		
-		
-		self.debugPrint("Ant at \t"+str(self.loc))
-		self.debugPrint("\tPerc. center\t"+str(perc_center))
-		self.debugPrint("\tCenter Bias\t"+str(center_bias))
-		self.debugPrint("\tPerc. velo\t"+str(perc_velo))
-		self.debugPrint("\tVelo bias\t"+str(velo_bias))
-		self.debugPrint("\tChill\t\t"+str(chill))
-		self.debugPrint("\tPerc. Hill\t"+str(minHill))
-		self.debugPrint("\tHill Distance\t"+str(minDist))
-		self.debugPrint("\tHill Bias\t"+str(hill_bias))
-		self.debugPrint("\tdeltaV\t\t"+str(deltaV))
+#		
+#		self.debugPrint("Ant at \t"+str(self.loc))
+#		self.debugPrint("\tPerc. center\t"+str(perc_center))
+#		self.debugPrint("\tCenter Bias\t"+str(center_bias))
+#		self.debugPrint("\tPerc. velo\t"+str(perc_velo))
+#		self.debugPrint("\tVelo bias\t"+str(velo_bias))
+#		self.debugPrint("\tChill\t\t"+str(chill))
+#		self.debugPrint("\tPerc. Hill\t"+str(minHill))
+#		self.debugPrint("\tHill Distance\t"+str(minDist))
+#		self.debugPrint("\tHill Bias\t"+str(hill_bias))
+#		self.debugPrint("\tdeltaV\t\t"+str(deltaV))
 		target=(int(self.loc[0]+dX)%ants.rows,int(self.loc[1]+dY)%ants.cols)
-		self.debugPrint("\tnew target\t"+str(target))
+#		self.debugPrint("\tnew target\t"+str(target))
 		self.tryOrder(target, ants, '4', bot)

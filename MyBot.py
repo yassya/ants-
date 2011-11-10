@@ -165,6 +165,12 @@ class MyBot:
 		self.debugOrderCounter['5'] = 0
 		self.debugOrderCounter['6'] = 0
 
+		if self.turnnumber==1:
+			for hill in ants.my_hills():
+				for neigh in self.mapNeighbours[hill]:
+					self.mapNeighbours[neigh].remove(hill)
+
+
 		# if self.turnnumber in [1,14,61]:
 			# self.debugPrint("wall: "+str(self.rememberedMap[9][65]))
 
@@ -448,7 +454,7 @@ class MyBot:
 		time5 = time.clock()
 	#rest of the ants do some flocking behaviour
 		if nAnts>1:
-			for ant in [a for a in self.antList if not a.hasTarget()]:
+			for ant in [a for a in self.antList if not a.hasTarget() and not a in ants.my_hills()]:
 				ant.boidMove(self,ants,nAnts)
 		time6 = time.clock()
 	
