@@ -261,17 +261,6 @@ class MyBot:
 #			self.debugPrint("Avg. Velo of ants:\t"+str(self.AntVelo/nAnts))
 
 
-		#count own ants closeby enemy ants
-		self.closebyEnemyAntsDistances={}
-		
-		for enAnt in ants.enemy_ants():
-			self.closebyEnemyAntsDistances[enAnt[0]]=set()
-			for ant in ants.my_ants():
-				dist=ants.radius2(enAnt[0], ant)
-				if dist <= ants.attackradius2:
-					self.closebyEnemyAntsDistances[enAnt[0]].add(ant)
-					
-		self.debugPrint(str(self.closebyEnemyAntsDistances))
 						
 					
 #		for ant in [a for a in self.antList if a.orderName==5]:
@@ -397,17 +386,7 @@ class MyBot:
 						for neigh in self.mapNeighbours[notUsed[0]]:
 							if notUsed[0] in self.mapNeighbours[neigh]:
 								self.mapNeighbours[neigh].remove(notUsed[0])						
-					
-					
-#					for defend in defendDistances:
-#							if defend[2] not in used  and not defend[1].hasTarget() and not self.knownMap[defend[2][0]][defend[2][1]]==4:
-#								defend[1].tryOrder(defend[2], ants, '5', self)
-#								used.append(defend[2])
-#								self.knownMap[defend[2][0]][defend[2][1]]=4
-#						
-						
-				
-		
+
 #		 priority 3: Freshly created ants. Move away from hill into random direction
 		for hill in [a for a in ants.my_hills() if a in ants.my_ants()]:
 			for ant in [a for a in self.antList if a.loc == hill if not a.hasTarget()]:
@@ -424,9 +403,18 @@ class MyBot:
 					if adjacentPositions:
 						targetNew = random.choice(adjacentPositions)
 						if not self.isBlockedLoc(targetNew, ants):
-							ant.tryOrder(targetNew, ants, '3', self)
+							ant.tryOrder(targetNew, ants, '3', self)					
+					
+#					for defend in defendDistances:
+#							if defend[2] not in used  and not defend[1].hasTarget() and not self.knownMap[defend[2][0]][defend[2][1]]==4:
+#								defend[1].tryOrder(defend[2], ants, '5', self)
+#								used.append(defend[2])
+#								self.knownMap[defend[2][0]][defend[2][1]]=4
+#						
 						
-					break
+				
+		
+
 		
 		
 		
@@ -451,19 +439,39 @@ class MyBot:
 					nExplorers+=1
 			
 	
+		
+		
+
+						
+							
+		
 		time5 = time.clock()
-		
-		
-		
-	
 	#rest of the ants do some flocking behaviour
-		if(nAnts>1):
+		if nAnts>1:
 			for ant in [a for a in self.antList if not a.hasTarget()]:
 				ant.boidMove(self,ants,nAnts)
-	
-	
-		
 		time6 = time.clock()
+	
+	#count own ants close-by enemy ants
+		self.closebyEnemyAntsDistances={}
+		
+		for enAnt in ants.enemy_ants():
+			self.closebyEnemyAntsDistances[enAnt[0]]=set()
+			for ant in self.antList:
+				if ant.waypoints: #it shall move. see where it will be
+					x=ants.destination(ant.loc, ant.waypoints[0])
+					dist=ants.radius2(enAnt[0], x)
+					if dist <= ants.attackradius2:
+						self.closebyEnemyAntsDistances[enAnt[0]].add(ant.loc)
+				else: #shall not move, see where it is
+					dist=ants.radius2(enAnt[0], ant.loc)
+					if dist <= ants.attackradius2:
+						self.closebyEnemyAntsDistances[enAnt[0]].add(ant.loc)
+					
+		self.debugPrint(str(self.closebyEnemyAntsDistances))
+		
+		
+		
 		self.debugPrint("flocking time: "+str((time6-time5)*1000))
 		for ant in [a for a in self.antList if a.hasTarget or a.orderName == '4']:
 			ant.move(ants, self)

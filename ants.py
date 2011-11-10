@@ -192,6 +192,16 @@ class Ants():
         d_row = min(abs(row1 - row2), self.rows - abs(row1 - row2))
         return d_row + d_col
 
+
+    def radius2(self, loc1, loc2): #added by us
+        'calculate the radius between to locations'
+        row1, col1 = loc1
+        row2, col2 = loc2
+        d_col = min(abs(col1 - col2), self.cols - abs(col1 - col2))
+        d_row = min(abs(row1 - row2), self.rows - abs(row1 - row2))
+        return d_row*d_row + d_col*d_col
+
+
     def direction(self, loc1, loc2):
         'determine the 1 or 2 fastest (closest) directions to reach a location'
         row1, col1 = loc1
