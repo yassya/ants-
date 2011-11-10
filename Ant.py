@@ -3,6 +3,7 @@ from collections import deque
 from numpy import array
 from MyBot import MyBot
 from MyBot import isDebug
+from heapq import *
 
 class Ant:
 	loc = (-1, -1)
@@ -44,80 +45,39 @@ class Ant:
 			wp.append(next_wp)
 			loc_temp = ants.destination(loc_temp, next_wp)
 		return wp
-		
-	# A* with JPS
-	def generateWaypointsJPS(self, target, bot, ants):
-		if self.loc == target:
-			return deque()
-		def getNNodes(loc):
-			l = []
-			l.append(ants.destination(loc, 'n'))
-			l.append(ants.destination(loc, 'e'))
-			l.append(ants.destination(loc, 's'))
-			l.append(ants.destination(loc, 'w'))
-			return l
-			
-		def jump(c, n, s, g):
-			direct = ants.direction(c, n) # n contains field, dir n,e,s,w
-			if bot.rememberedMap[direct[0]][direct[1]] == 3:
-				return 0
-			if n == g:
-				return n
-		def prune(s, x, y):
-			return ants.distance(s, y) >= ants.distance(x, y)
-			
-			
-		def reconstruct_path(successors):
-			pass
-
-		currNode = self.loc
-		startNode = self.loc
-		goalNode = target
-		
-		successors = deque()
-		for y in [n for n in getNNodes(currNode) if not prune(startNode, currNode, n)]:
-			jumpPoints = jump(currNode, n, startNode, goalNode)
-			successors = (jumpPoints)
-		return reconstruct_path(successors)
 	
 	# wikipedia-algorithm implementation for A*
 	def generateWaypointsAStar(self, target, bot, ants):
 		if self.loc == target:
 			return deque()
-		breakingFactor = (1 + 1.0 / ants.distance(self.loc, target))
-		def heuristic_cost_estimate(loc1, loc2):
-			return ants.distance(loc1, loc2) * breakingFactor
 		def reconstruct_path(node):
-			path = deque()
-			path.appendleft(ants.direction(came_from[node], node)[0])
+			directions = deque()
+			directions.appendleft( ants.direction(came_from[node], node)[0] )
 			node = came_from[node]
 			while node != self.loc:
-				path.appendleft(ants.direction(came_from[node], node)[0])
+				directions.appendleft( ants.direction(came_from[node], node)[0] )
 				node = came_from[node]
-			return path
+			return directions
 		
 		closedset = set()
 		openset = set()
 		openset.add(self.loc)
+		fHeap = []
 		came_from = {}
-		
 		g_score = {self.loc:0}
-		h_score = {self.loc:heuristic_cost_estimate(self.loc, target)}
-		f_score = { self.loc : g_score[self.loc] + h_score[self.loc] }
+		heappush( fHeap, (g_score[self.loc] + ants.distance(self.loc, target)*3, self.loc) )
 		
-		whilecounter = 0
 		while openset:
-			whilecounter += 1
-			x = min(f_score, key=f_score.get)
+			x = heappop( fHeap )[1]
+			while x not in openset:
+				x = heappop( fHeap )[1]
 			
 			if x == target:
 				return reconstruct_path(target)
 			openset.remove(x)
-			del f_score[x]
-			
 			closedset.add(x)
-
-			for y in [n for n in bot.mapNeighbours[x]]:
+			
+			for y in bot.mapNeighbours[x]:
 				if y in closedset:
 					continue
 				tentative_g_score = g_score[x] + ants.distance(x, y)
@@ -132,8 +92,7 @@ class Ant:
 				if tentative_is_better:
 					came_from[y] = x
 					g_score[y] = tentative_g_score
-					h_score[y] = heuristic_cost_estimate(y, target)
-					f_score[y] = g_score[y] + h_score[y]
+					heappush( fHeap, (tentative_g_score + ants.distance(y, target)*3, y) )
 
 	def tryOrder(self, ptarget, ants, ordername, bot):
 		if bot.rememberedMap[ptarget[0]][ptarget[1]] != 3 and bot.rememberedMap[ptarget[0]][ptarget[1]] != 4 and ptarget != self.target:
